@@ -6,20 +6,22 @@ If you run on a real iPhone or iPad, open Signing & Capabilities and select your
 
 ## Features
 
-- SwiftUI + SceneKit 3D globe
+- SwiftUI + SceneKit native iOS app
 - iPhone and iPad responsive layout
-- Google Earth style dark-space globe presentation
-- Accurate equirectangular Earth sphere geometry
-- NASA Blue Marble image loaded as the preferred Earth texture
+- Default Google Earth mode using `WKWebView` to load Google Earth Web
+- Selecting a saved place opens that coordinate in Google Earth Web search
+- Local Travel Globe fallback using SceneKit 3D Earth
+- Accurate equirectangular Earth sphere geometry for local fallback
+- NASA Blue Marble image loaded as preferred local Earth texture
 - Offline procedural Earth texture fallback if the device has no network
 - Clouds, atmosphere glow, dark space background and directional sunlight
-- Correct latitude / longitude conversion for travel pins
+- Correct latitude / longitude conversion for travel pins in local mode
 - Drag to rotate and pinch to zoom
-- Tap glowing pins to view travel records
+- Tap local glowing pins to view travel records
 - Add places by city name using built-in coordinates
 - Delete records
 - UserDefaults local persistence
 
-## Notes
+## Important notes
 
-The app does not use Google Earth assets or Google Maps APIs. It uses a public NASA Blue Marble texture when online, and automatically falls back to a built-in procedural Earth texture when offline. Pin placement uses real latitude and longitude coordinates.
+This project now includes a true Google Earth Web mode. Google Earth itself is loaded through `WKWebView` because Google does not provide a native SceneKit Google Earth model that can be copied into an iOS app. The local 3D globe remains available as a fallback travel-pin view.
