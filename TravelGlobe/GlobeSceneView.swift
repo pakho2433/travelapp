@@ -9,27 +9,27 @@ struct GlobeSceneView: UIViewRepresentable {
     private let earthRadius: Float = 1.65
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(self)
+        Coordinator(parent: self)
     }
 
     func makeUIView(context: Context) -> SCNView {
-        let view = SCNView()
+        let scnView = SCNView()
         let scene = SCNScene()
 
-        view.scene = scene
-        view.backgroundColor = UIColor(red: 0.005, green: 0.012, blue: 0.035, alpha: 1.0)
-        view.allowsCameraControl = true
-        view.autoenablesDefaultLighting = false
-        view.antialiasingMode = .multisampling4X
-        view.preferredFramesPerSecond = 60
+        scnView.scene = scene
+        scnView.backgroundColor = UIColor(red: 0.005, green: 0.012, blue: 0.035, alpha: 1.0)
+        scnView.allowsCameraControl = true
+        scnView.autoenablesDefaultLighting = false
+        scnView.antialiasingMode = .multisampling4X
+        scnView.preferredFramesPerSecond = 60
 
-        context.coordinator.sceneView = view
+        context.coordinator.sceneView = scnView
         context.coordinator.earthRadius = earthRadius
         context.coordinator.pinRoot.removeFromParentNode()
         context.coordinator.pinRoot = SCNNode()
         context.coordinator.pinRoot.name = "PinRoot"
 
-        setupCamera(in: scene, view: view)
+        setupCamera(in: scene, view: scnView)
         setupLights(in: scene)
         setupSpaceBackground(in: scene)
         setupEarth(in: scene)
@@ -40,10 +40,10 @@ struct GlobeSceneView: UIViewRepresentable {
             target: context.coordinator,
             action: #selector(Coordinator.handleTap(_:))
         )
-        view.addGestureRecognizer(tapGesture)
+        scnView.addGestureRecognizer(tapGesture)
 
         context.coordinator.refreshPins(with: travelStore.places)
-        return view
+        return scnView
     }
 
     func updateUIView(_ uiView: SCNView, context: Context) {
@@ -64,8 +64,6 @@ struct GlobeSceneView: UIViewRepresentable {
         view.pointOfView = cameraNode
         view.defaultCameraController.target = SCNVector3(0, 0, 0)
         view.defaultCameraController.inertiaEnabled = true
-        view.defaultCameraController.maximumVerticalAngle = 89
-        view.defaultCameraController.minimumVerticalAngle = -89
     }
 
     private func setupLights(in scene: SCNScene) {
@@ -81,11 +79,11 @@ struct GlobeSceneView: UIViewRepresentable {
         sunNode.name = "SunLight"
         sunNode.light = SCNLight()
         sunNode.light?.type = .directional
-        sunNode.light?.intensity = 1350
+        sunNode.light?.intensity = 1380
         sunNode.light?.castsShadow = true
         sunNode.light?.shadowMode = .deferred
         sunNode.light?.shadowRadius = 5
-        sunNode.position = SCNVector3(4.5, 3.2, 5.5)
+        sunNode.position = SCNVector3(4.6, 3.2, 5.6)
         sunNode.eulerAngles = SCNVector3(-Float.pi / 4.2, Float.pi / 5.0, 0)
         scene.rootNode.addChildNode(sunNode)
 
@@ -93,7 +91,7 @@ struct GlobeSceneView: UIViewRepresentable {
         rimNode.name = "BlueRimLight"
         rimNode.light = SCNLight()
         rimNode.light?.type = .omni
-        rimNode.light?.intensity = 180
+        rimNode.light?.intensity = 190
         rimNode.light?.color = UIColor(red: 0.25, green: 0.85, blue: 1.0, alpha: 1.0)
         rimNode.position = SCNVector3(-4, 1.8, -3.5)
         scene.rootNode.addChildNode(rimNode)
@@ -103,7 +101,7 @@ struct GlobeSceneView: UIViewRepresentable {
         let starRoot = SCNNode()
         starRoot.name = "StarBackground"
 
-        for _ in 0..<360 {
+        for _ in 0..<420 {
             let starSize = CGFloat.random(in: 0.004...0.018)
             let star = SCNSphere(radius: starSize)
             let material = SCNMaterial()
@@ -125,28 +123,29 @@ struct GlobeSceneView: UIViewRepresentable {
     }
 
     private func setupEarth(in scene: SCNScene) {
-        let earthGeometry = SCNSphere(radius: CGFloat(earthRadius))
-        earthGeometry.segmentCount = 160
+        let earthGeometry = makeAccurateEquirectangularEarthGeometry(radius: earthRadius)
 
         let earthMaterial = SCNMaterial()
-        earthMaterial.diffuse.contents = makeEarthTexture()
-        earthMaterial.emission.contents = UIColor(red: 0.0, green: 0.07, blue: 0.11, alpha: 1.0)
-        earthMaterial.emission.intensity = 0.10
+        earthMaterial.diffuse.contents = makeFallbackEarthTexture()
+        earthMaterial.emission.contents = UIColor(red: 0.0, green: 0.06, blue: 0.10, alpha: 1.0)
+        earthMaterial.emission.intensity = 0.08
         earthMaterial.specular.contents = UIColor(red: 0.45, green: 0.78, blue: 0.90, alpha: 1.0)
-        earthMaterial.shininess = 0.28
+        earthMaterial.shininess = 0.26
         earthMaterial.locksAmbientWithDiffuse = true
         earthMaterial.isDoubleSided = false
         earthGeometry.materials = [earthMaterial]
 
         let earthNode = SCNNode(geometry: earthGeometry)
-        earthNode.name = "Earth"
+        earthNode.name = "AccurateEarth"
         scene.rootNode.addChildNode(earthNode)
 
-        let cloudGeometry = SCNSphere(radius: CGFloat(earthRadius * 1.012))
+        loadBlueMarbleTexture(into: earthMaterial)
+
+        let cloudGeometry = SCNSphere(radius: CGFloat(earthRadius * 1.013))
         cloudGeometry.segmentCount = 128
         let cloudMaterial = SCNMaterial()
         cloudMaterial.diffuse.contents = makeCloudTexture()
-        cloudMaterial.transparency = 0.34
+        cloudMaterial.transparency = 0.32
         cloudMaterial.blendMode = .alpha
         cloudMaterial.lightingModel = .constant
         cloudMaterial.isDoubleSided = true
@@ -154,14 +153,14 @@ struct GlobeSceneView: UIViewRepresentable {
 
         let cloudNode = SCNNode(geometry: cloudGeometry)
         cloudNode.name = "CloudLayer"
-        cloudNode.runAction(.repeatForever(.rotateBy(x: 0, y: CGFloat.pi * 2, z: 0, duration: 140)))
+        cloudNode.runAction(.repeatForever(.rotateBy(x: 0, y: CGFloat.pi * 2, z: 0, duration: 150)))
         scene.rootNode.addChildNode(cloudNode)
 
-        let atmosphereGeometry = SCNSphere(radius: CGFloat(earthRadius * 1.035))
+        let atmosphereGeometry = SCNSphere(radius: CGFloat(earthRadius * 1.038))
         atmosphereGeometry.segmentCount = 128
         let atmosphereMaterial = SCNMaterial()
         atmosphereMaterial.diffuse.contents = UIColor.clear
-        atmosphereMaterial.emission.contents = UIColor(red: 0.25, green: 0.8, blue: 1.0, alpha: 1.0)
+        atmosphereMaterial.emission.contents = UIColor(red: 0.22, green: 0.80, blue: 1.0, alpha: 1.0)
         atmosphereMaterial.transparency = 0.18
         atmosphereMaterial.blendMode = .add
         atmosphereMaterial.lightingModel = .constant
@@ -173,7 +172,73 @@ struct GlobeSceneView: UIViewRepresentable {
         scene.rootNode.addChildNode(atmosphereNode)
     }
 
-    private func makeEarthTexture() -> UIImage {
+    private func makeAccurateEquirectangularEarthGeometry(radius: Float) -> SCNGeometry {
+        let longitudeSegments = 192
+        let latitudeSegments = 96
+
+        var vertices: [SCNVector3] = []
+        var normals: [SCNVector3] = []
+        var textureCoordinates: [CGPoint] = []
+        var indices: [Int32] = []
+
+        for latIndex in 0...latitudeSegments {
+            let v = Double(latIndex) / Double(latitudeSegments)
+            let latitude = 90.0 - v * 180.0
+
+            for lonIndex in 0...longitudeSegments {
+                let u = Double(lonIndex) / Double(longitudeSegments)
+                let longitude = -180.0 + u * 360.0
+                let position = Self.coordinateToVector3(latitude: latitude, longitude: longitude, radius: radius)
+                let normal = position.normalized()
+
+                vertices.append(position)
+                normals.append(normal)
+                textureCoordinates.append(CGPoint(x: u, y: v))
+            }
+        }
+
+        let rowCount = longitudeSegments + 1
+        for latIndex in 0..<latitudeSegments {
+            for lonIndex in 0..<longitudeSegments {
+                let topLeft = Int32(latIndex * rowCount + lonIndex)
+                let topRight = Int32(latIndex * rowCount + lonIndex + 1)
+                let bottomLeft = Int32((latIndex + 1) * rowCount + lonIndex)
+                let bottomRight = Int32((latIndex + 1) * rowCount + lonIndex + 1)
+
+                indices.append(contentsOf: [topLeft, bottomLeft, topRight])
+                indices.append(contentsOf: [topRight, bottomLeft, bottomRight])
+            }
+        }
+
+        let vertexSource = SCNGeometrySource(vertices: vertices)
+        let normalSource = SCNGeometrySource(normals: normals)
+        let textureSource = SCNGeometrySource(textureCoordinates: textureCoordinates)
+        let element = SCNGeometryElement(indices: indices, primitiveType: .triangles)
+
+        return SCNGeometry(sources: [vertexSource, normalSource, textureSource], elements: [element])
+    }
+
+    private func loadBlueMarbleTexture(into material: SCNMaterial) {
+        guard let url = URL(string: "https://eoimages.gsfc.nasa.gov/images/imagerecords/74000/74393/world.topo.bathy.200412.3x5400x2700.jpg") else {
+            return
+        }
+
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            guard let data,
+                  let image = UIImage(data: data) else {
+                return
+            }
+
+            DispatchQueue.main.async {
+                material.diffuse.contents = image
+                material.diffuse.mipFilter = .linear
+                material.diffuse.minificationFilter = .linear
+                material.diffuse.magnificationFilter = .linear
+            }
+        }.resume()
+    }
+
+    private func makeFallbackEarthTexture() -> UIImage {
         let size = CGSize(width: 4096, height: 2048)
         let renderer = UIGraphicsImageRenderer(size: size)
 
@@ -227,127 +292,58 @@ struct GlobeSceneView: UIViewRepresentable {
                     }
                     cg.closePath()
                     cg.setStrokeColor(stroke.cgColor)
-                    cg.setLineWidth(3.5)
+                    cg.setLineWidth(3.0)
                     cg.strokePath()
                 }
             }
 
-            let landFill = UIColor(red: 0.18, green: 0.55, blue: 0.28, alpha: 1.0)
-            let landHighlight = UIColor(red: 0.48, green: 0.74, blue: 0.34, alpha: 1.0)
-            let coast = UIColor(red: 0.80, green: 0.95, blue: 0.68, alpha: 0.55)
-            let desert = UIColor(red: 0.73, green: 0.62, blue: 0.35, alpha: 0.52)
-            let ice = UIColor(red: 0.92, green: 0.98, blue: 1.0, alpha: 0.92)
+            let land = UIColor(red: 0.19, green: 0.56, blue: 0.30, alpha: 1.0)
+            let coast = UIColor(red: 0.78, green: 0.96, blue: 0.68, alpha: 0.58)
+            let desert = UIColor(red: 0.73, green: 0.62, blue: 0.35, alpha: 0.54)
+            let ice = UIColor(red: 0.92, green: 0.98, blue: 1.0, alpha: 0.90)
 
             let landMasses: [[GeoPoint]] = [
-                // North America
-                [
-                    .init(-168, 72), .init(-145, 71), .init(-124, 63), .init(-104, 60), .init(-82, 52),
-                    .init(-58, 53), .init(-52, 43), .init(-66, 31), .init(-82, 25), .init(-96, 18),
-                    .init(-108, 23), .init(-119, 33), .init(-126, 47), .init(-140, 58), .init(-168, 72)
-                ],
-                // Central America
-                [
-                    .init(-100, 22), .init(-86, 18), .init(-77, 9), .init(-81, 7), .init(-91, 13), .init(-103, 18)
-                ],
-                // South America
-                [
-                    .init(-81, 12), .init(-66, 9), .init(-49, 1), .init(-36, -13), .init(-45, -25),
-                    .init(-53, -42), .init(-68, -55), .init(-75, -38), .init(-80, -16), .init(-81, 12)
-                ],
-                // Greenland
-                [
-                    .init(-54, 82), .init(-22, 78), .init(-18, 65), .init(-42, 60), .init(-61, 68), .init(-54, 82)
-                ],
-                // Europe
-                [
-                    .init(-11, 71), .init(22, 70), .init(42, 58), .init(32, 45), .init(16, 38),
-                    .init(4, 37), .init(-10, 44), .init(-11, 71)
-                ],
-                // Africa
-                [
-                    .init(-18, 36), .init(20, 35), .init(51, 12), .init(43, -33), .init(24, -35),
-                    .init(9, -25), .init(-7, -8), .init(-17, 12), .init(-18, 36)
-                ],
-                // Middle East / West Asia
-                [
-                    .init(32, 42), .init(58, 39), .init(70, 25), .init(55, 12), .init(42, 15), .init(32, 30)
-                ],
-                // Asia
-                [
-                    .init(38, 70), .init(78, 73), .init(122, 67), .init(165, 58), .init(156, 42),
-                    .init(136, 37), .init(122, 20), .init(107, 8), .init(96, 14), .init(82, 8),
-                    .init(72, 23), .init(61, 35), .init(46, 42), .init(38, 70)
-                ],
-                // India / Southeast Asia
-                [
-                    .init(68, 24), .init(86, 25), .init(94, 17), .init(101, 7), .init(112, 1),
-                    .init(105, -8), .init(96, 5), .init(88, 22), .init(78, 8), .init(68, 24)
-                ],
-                // Japan
-                [
-                    .init(130, 45), .init(144, 42), .init(142, 31), .init(132, 32), .init(130, 45)
-                ],
-                // Philippines
-                [
-                    .init(119, 19), .init(126, 15), .init(124, 5), .init(117, 7), .init(119, 19)
-                ],
-                // Indonesia
-                [
-                    .init(95, 5), .init(126, 2), .init(142, -5), .init(132, -9), .init(105, -6), .init(95, 5)
-                ],
-                // Australia
-                [
-                    .init(112, -11), .init(154, -12), .init(153, -38), .init(132, -43), .init(114, -35), .init(112, -11)
-                ],
-                // New Zealand
-                [
-                    .init(166, -35), .init(179, -39), .init(176, -47), .init(166, -44), .init(166, -35)
-                ],
-                // Antarctica
-                [
-                    .init(-180, -72), .init(-120, -75), .init(-60, -72), .init(0, -76), .init(60, -72),
-                    .init(120, -75), .init(180, -72), .init(180, -90), .init(-180, -90), .init(-180, -72)
-                ]
+                [.init(-168, 72), .init(-145, 71), .init(-124, 63), .init(-104, 60), .init(-82, 52), .init(-58, 53), .init(-52, 43), .init(-66, 31), .init(-82, 25), .init(-96, 18), .init(-108, 23), .init(-119, 33), .init(-126, 47), .init(-140, 58), .init(-168, 72)],
+                [.init(-100, 22), .init(-86, 18), .init(-77, 9), .init(-81, 7), .init(-91, 13), .init(-103, 18)],
+                [.init(-81, 12), .init(-66, 9), .init(-49, 1), .init(-36, -13), .init(-45, -25), .init(-53, -42), .init(-68, -55), .init(-75, -38), .init(-80, -16), .init(-81, 12)],
+                [.init(-54, 82), .init(-22, 78), .init(-18, 65), .init(-42, 60), .init(-61, 68), .init(-54, 82)],
+                [.init(-11, 71), .init(22, 70), .init(42, 58), .init(32, 45), .init(16, 38), .init(4, 37), .init(-10, 44), .init(-11, 71)],
+                [.init(-18, 36), .init(20, 35), .init(51, 12), .init(43, -33), .init(24, -35), .init(9, -25), .init(-7, -8), .init(-17, 12), .init(-18, 36)],
+                [.init(32, 42), .init(58, 39), .init(70, 25), .init(55, 12), .init(42, 15), .init(32, 30)],
+                [.init(38, 70), .init(78, 73), .init(122, 67), .init(165, 58), .init(156, 42), .init(136, 37), .init(122, 20), .init(107, 8), .init(96, 14), .init(82, 8), .init(72, 23), .init(61, 35), .init(46, 42), .init(38, 70)],
+                [.init(68, 24), .init(86, 25), .init(94, 17), .init(101, 7), .init(112, 1), .init(105, -8), .init(96, 5), .init(88, 22), .init(78, 8), .init(68, 24)],
+                [.init(130, 45), .init(144, 42), .init(142, 31), .init(132, 32), .init(130, 45)],
+                [.init(119, 19), .init(126, 15), .init(124, 5), .init(117, 7), .init(119, 19)],
+                [.init(95, 5), .init(126, 2), .init(142, -5), .init(132, -9), .init(105, -6), .init(95, 5)],
+                [.init(112, -11), .init(154, -12), .init(153, -38), .init(132, -43), .init(114, -35), .init(112, -11)],
+                [.init(166, -35), .init(179, -39), .init(176, -47), .init(166, -44), .init(166, -35)],
+                [.init(-180, -72), .init(-120, -75), .init(-60, -72), .init(0, -76), .init(60, -72), .init(120, -75), .init(180, -72), .init(180, -90), .init(-180, -90), .init(-180, -72)]
             ]
 
             for polygon in landMasses {
-                drawPolygon(polygon, fill: landFill, stroke: coast)
+                drawPolygon(polygon, fill: land, stroke: coast)
             }
 
-            let highlights: [[GeoPoint]] = [
-                [.init(-125, 50), .init(-98, 47), .init(-75, 40), .init(-96, 30), .init(-122, 38)],
-                [.init(-72, -5), .init(-54, -12), .init(-50, -28), .init(-67, -36), .init(-75, -20)],
-                [.init(14, 58), .init(30, 55), .init(20, 46), .init(3, 48)],
-                [.init(72, 56), .init(112, 52), .init(130, 43), .init(95, 34), .init(70, 42)],
-                [.init(119, -20), .init(145, -22), .init(137, -34), .init(120, -32)]
-            ]
-
-            for polygon in highlights {
-                drawPolygon(polygon, fill: landHighlight.withAlphaComponent(0.58), stroke: nil)
-            }
-
-            let desertAreas: [[GeoPoint]] = [
+            let deserts: [[GeoPoint]] = [
                 [.init(-15, 30), .init(30, 28), .init(35, 15), .init(5, 10), .init(-12, 17)],
                 [.init(38, 30), .init(65, 28), .init(58, 18), .init(42, 18)],
                 [.init(118, -20), .init(138, -22), .init(132, -31), .init(116, -30)]
             ]
 
-            for polygon in desertAreas {
+            for polygon in deserts {
                 drawPolygon(polygon, fill: desert, stroke: nil)
             }
 
             drawPolygon([.init(-180, 90), .init(180, 90), .init(180, 76), .init(90, 80), .init(0, 76), .init(-90, 80), .init(-180, 76)], fill: ice, stroke: nil)
 
-            cg.setStrokeColor(UIColor.white.withAlphaComponent(0.075).cgColor)
-            cg.setLineWidth(1.2)
-
+            cg.setStrokeColor(UIColor.white.withAlphaComponent(0.07).cgColor)
+            cg.setLineWidth(1.0)
             for latitude in stride(from: -60, through: 60, by: 30) {
                 let y = ((90 - CGFloat(latitude)) / 180) * size.height
                 cg.move(to: CGPoint(x: 0, y: y))
                 cg.addLine(to: CGPoint(x: size.width, y: y))
                 cg.strokePath()
             }
-
             for longitude in stride(from: -150, through: 180, by: 30) {
                 let x = ((CGFloat(longitude) + 180) / 360) * size.width
                 cg.move(to: CGPoint(x: x, y: 0))
@@ -369,12 +365,12 @@ struct GlobeSceneView: UIViewRepresentable {
             let cg = context.cgContext
             cg.clear(CGRect(origin: .zero, size: size))
 
-            for _ in 0..<95 {
+            for _ in 0..<110 {
                 let x = CGFloat.random(in: 0...size.width)
                 let y = CGFloat.random(in: size.height * 0.12...size.height * 0.88)
                 let width = CGFloat.random(in: 120...360)
                 let height = CGFloat.random(in: 18...62)
-                let alpha = CGFloat.random(in: 0.12...0.34)
+                let alpha = CGFloat.random(in: 0.12...0.32)
 
                 cg.saveGState()
                 cg.translateBy(x: x, y: y)
@@ -386,6 +382,17 @@ struct GlobeSceneView: UIViewRepresentable {
         }
     }
 
+    private static func coordinateToVector3(latitude: Double, longitude: Double, radius: Float) -> SCNVector3 {
+        let lat = Float(latitude) * .pi / 180
+        let lon = Float(longitude) * .pi / 180
+
+        let x = radius * cos(lat) * sin(lon)
+        let y = radius * sin(lat)
+        let z = radius * cos(lat) * cos(lon)
+
+        return SCNVector3(x, y, z)
+    }
+
     final class Coordinator: NSObject {
         var parent: GlobeSceneView
         weak var sceneView: SCNView?
@@ -393,7 +400,7 @@ struct GlobeSceneView: UIViewRepresentable {
         var earthRadius: Float = 1.65
         private var placeByPinName: [String: TravelPlace] = [:]
 
-        init(_ parent: GlobeSceneView) {
+        init(parent: GlobeSceneView) {
             self.parent = parent
         }
 
@@ -414,11 +421,11 @@ struct GlobeSceneView: UIViewRepresentable {
                 return
             }
 
-            let normal = Self.position(latitude: place.latitude, longitude: place.longitude, radius: 1).normalized()
+            let normal = GlobeSceneView.coordinateToVector3(latitude: place.latitude, longitude: place.longitude, radius: 1).normalized()
             let position = SCNVector3(
-                normal.x * (earthRadius + 0.09),
-                normal.y * (earthRadius + 0.09),
-                normal.z * (earthRadius + 0.09)
+                normal.x * (earthRadius + 0.095),
+                normal.y * (earthRadius + 0.095),
+                normal.z * (earthRadius + 0.095)
             )
 
             let pinName = "pin-\(place.id.uuidString)"
@@ -507,17 +514,6 @@ struct GlobeSceneView: UIViewRepresentable {
             let down = SCNAction.scale(to: 1.0, duration: 0.22)
             down.timingMode = .easeInEaseOut
             node.runAction(.sequence([up, down]))
-        }
-
-        private static func position(latitude: Double, longitude: Double, radius: Float) -> SCNVector3 {
-            let lat = Float(latitude) * .pi / 180
-            let lon = Float(longitude) * .pi / 180
-
-            let x = radius * cos(lat) * sin(lon)
-            let y = radius * sin(lat)
-            let z = radius * cos(lat) * cos(lon)
-
-            return SCNVector3(x, y, z)
         }
 
         private static func orientationFromYAxis(to direction: SCNVector3) -> SCNQuaternion {
