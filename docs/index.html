@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Travel Globe / 我的旅行地球儀</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/pakho2433/travelapp@main/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero-card">
+        <div>
+          <p class="eyebrow">Travel Globe</p>
+          <h1>我的旅行地球儀</h1>
+          <p class="subtitle">在 3D 地球上記錄你去過的地方，用圖釘保存城市、國家、日期和旅行回憶。</p>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <span id="placeCount">0</span>
+            <small>已去過地方</small>
+          </div>
+          <div class="stat-card">
+            <span id="countryCount">0</span>
+            <small>國家 / 地區</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="main-grid">
+        <section class="globe-card">
+          <div class="card-header">
+            <div>
+              <h2>3D Travel Globe</h2>
+              <p>拖動旋轉・滾輪縮放・點擊圖釘</p>
+            </div>
+            <button id="resetButton" class="small-button" type="button">重設示例</button>
+          </div>
+          <div id="globeContainer" class="globe-container"></div>
+        </section>
+
+        <aside class="side-panel">
+          <section class="glass-card selected-card">
+            <div class="section-title">
+              <p>Selected Memory</p>
+              <h2>旅行詳情</h2>
+            </div>
+            <div id="detailPanel" class="detail-panel empty">
+              <p>請點擊地球上的圖釘，或在列表選擇一個地點。</p>
+            </div>
+          </section>
+
+          <section class="glass-card">
+            <div class="section-title">
+              <p>Add New Place</p>
+              <h2>新增旅行記錄</h2>
+            </div>
+
+            <form id="placeForm" class="place-form">
+              <div class="form-grid">
+                <label>地點名稱
+                  <input id="placeName" required placeholder="例：Seoul Tower" />
+                </label>
+                <label>國家 / 地區
+                  <input id="country" required placeholder="例：South Korea" />
+                </label>
+                <label>城市
+                  <input id="city" required placeholder="例：Seoul" />
+                </label>
+                <label>到訪日期
+                  <input id="date" type="date" />
+                </label>
+                <label>Latitude
+                  <input id="latitude" type="number" step="any" required placeholder="37.5665" />
+                </label>
+                <label>Longitude
+                  <input id="longitude" type="number" step="any" required placeholder="126.9780" />
+                </label>
+              </div>
+
+              <label>照片網址，可選
+                <input id="photoUrl" placeholder="https://..." />
+              </label>
+
+              <label>備註
+                <textarea id="note" rows="3" placeholder="寫低這次旅行的回憶、景點或感受..."></textarea>
+              </label>
+
+              <p id="formError" class="form-error" hidden></p>
+              <button class="primary-button" type="submit">新增到地球儀</button>
+            </form>
+          </section>
+
+          <section class="glass-card">
+            <div class="section-title">
+              <p>Visited Places</p>
+              <h2>所有去過的地方</h2>
+            </div>
+            <div id="placeList" class="place-list"></div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module" src="https://cdn.jsdelivr.net/gh/pakho2433/travelapp@main/app.js"></script>
+  </body>
+</html>
