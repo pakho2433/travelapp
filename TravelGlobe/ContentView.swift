@@ -16,25 +16,41 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let globeHeight = max(330, min(geometry.size.height * 0.52, 560))
+            let isWideLayout = geometry.size.width >= 820
+            let globeHeight = isWideLayout
+                ? max(520, min(geometry.size.height * 0.74, 760))
+                : max(330, min(geometry.size.height * 0.52, 560))
 
             ZStack(alignment: .bottom) {
                 backgroundView
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 16) {
+                    VStack(spacing: 18) {
                         headerView
-                        globeCard(height: globeHeight)
-                        statsView
-                        actionButtons
+
+                        if isWideLayout {
+                            HStack(alignment: .top, spacing: 18) {
+                                globeCard(height: globeHeight)
+                                    .frame(maxWidth: .infinity)
+
+                                sideDashboard
+                                    .frame(width: min(360, geometry.size.width * 0.34))
+                            }
+                        } else {
+                            VStack(spacing: 16) {
+                                globeCard(height: globeHeight)
+                                statsView
+                                actionButtons
+                            }
+                        }
 
                         Color.clear
                             .frame(height: selectedPlace == nil ? 10 : 250)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 18)
+                    .padding(.horizontal, isWideLayout ? 28 : 16)
+                    .padding(.top, isWideLayout ? 26 : 18)
                     .padding(.bottom, 24)
-                    .frame(maxWidth: 760)
+                    .frame(maxWidth: isWideLayout ? 1240 : 760)
                     .frame(maxWidth: .infinity)
                 }
 
@@ -50,7 +66,8 @@ struct ContentView: View {
                             }
                         }
                     )
-                    .padding(.horizontal, 14)
+                    .frame(maxWidth: isWideLayout ? 560 : .infinity)
+                    .padding(.horizontal, isWideLayout ? 28 : 14)
                     .padding(.bottom, 12)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(10)
@@ -82,19 +99,19 @@ struct ContentView: View {
         .ignoresSafeArea()
         .overlay {
             RadialGradient(
-                colors: [Color.cyan.opacity(0.22), Color.clear],
+                colors: [Color.cyan.opacity(0.24), Color.clear],
                 center: .topLeading,
                 startRadius: 20,
-                endRadius: 420
+                endRadius: 520
             )
             .ignoresSafeArea()
         }
         .overlay {
             RadialGradient(
-                colors: [Color.green.opacity(0.12), Color.clear],
+                colors: [Color.green.opacity(0.13), Color.clear],
                 center: .bottomTrailing,
                 startRadius: 20,
-                endRadius: 520
+                endRadius: 620
             )
             .ignoresSafeArea()
         }
@@ -109,9 +126,10 @@ struct ContentView: View {
                 .foregroundStyle(.cyan.opacity(0.85))
 
             Text("我的旅行地球儀")
-                .font(.system(size: 34, weight: .heavy, design: .rounded))
+                .font(.system(size: 36, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.78)
 
             Text("用 3D 地球記錄你去過的城市，保存每一段旅行回憶。")
                 .font(.subheadline)
@@ -127,13 +145,14 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("3D Globe")
+                    Text("Google Earth 風格 3D Globe")
                         .font(.headline)
                         .foregroundStyle(.white)
 
-                    Text("拖動旋轉・雙指縮放・點擊圖釘")
+                    Text("正確經緯度・拖動旋轉・雙指縮放・點擊圖釘")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.58))
+                        .lineLimit(2)
                 }
 
                 Spacer()
@@ -169,6 +188,59 @@ struct ContentView: View {
                 .stroke(.white.opacity(0.14), lineWidth: 1)
         }
         .shadow(color: .black.opacity(0.38), radius: 28, x: 0, y: 18)
+    }
+
+    private var sideDashboard: some View {
+        VStack(spacing: 14) {
+            statsView
+                .layoutPriority(1)
+
+            actionButtons
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("最近地點")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                ForEach(travelStore.places.prefix(5)) { place in
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                            selectedPlace = place
+                        }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "mappin.circle.fill")
+                                .foregroundStyle(.orange)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(place.name)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+
+                                Text("\(place.city), \(place.country)")
+                                    .font(.caption)
+                                    .foregroundStyle(.white.opacity(0.55))
+                                    .lineLimit(1)
+                            }
+
+                            Spacer(minLength: 0)
+                        }
+                        .padding(11)
+                        .background(.white.opacity(0.07))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(14)
+            .background(.ultraThinMaterial.opacity(0.72))
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(.white.opacity(0.12), lineWidth: 1)
+            }
+        }
     }
 
     private var statsView: some View {
